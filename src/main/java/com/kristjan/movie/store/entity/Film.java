@@ -17,7 +17,6 @@ public class Film {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
-//    private String genre;
     private FilmType type;
     private int daysRented;
     @ManyToOne

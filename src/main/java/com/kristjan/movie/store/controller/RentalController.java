@@ -1,15 +1,13 @@
 package com.kristjan.movie.store.controller;
 
-import com.kristjan.movie.store.entity.Film;
+import com.kristjan.movie.store.entity.Person;
 import com.kristjan.movie.store.entity.Rental;
 import com.kristjan.movie.store.model.FilmRentalDTO;
-import com.kristjan.movie.store.repository.FilmRepository;
+import com.kristjan.movie.store.repository.PersonRepository;
 import com.kristjan.movie.store.repository.RentalRepository;
+import com.kristjan.movie.store.service.RentalService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -19,7 +17,9 @@ public class RentalController {
     @Autowired
     RentalRepository rentalRepository;
     @Autowired
-    FilmRepository filmRepository;
+    RentalService rentalService;
+    @Autowired
+    PersonRepository personRepository;
 
     @GetMapping("rentals")
     public List<Rental> getRentals() {
@@ -27,27 +27,26 @@ public class RentalController {
     }
 
     @PostMapping("start-rental")
-    public List<Rental> startRental(@RequestBody List<FilmRentalDTO> films) {
-
-        // TODO: ära luba laenutada filme, mis on juba laenutatud
-
-        Rental rental = new Rental();
-        rental = rentalRepository.save(rental);
-        double sum = 0;
-        for (FilmRentalDTO f: films) {
-            Film dbFilm = filmRepository.findById(f.getId()).orElseThrow();
-            dbFilm.setDaysRented(f.getDays());
-            dbFilm.setRental(rental);
-            filmRepository.save(dbFilm);
-            // TODO: 1. arvuta iga filmi maksumus
-            sum += 5;
-        }
-        rental.setInitialFee(sum);
-        rentalRepository.save(rental);
+    public List<Rental> startRental(
+            @RequestBody List<FilmRentalDTO> films,
+            @RequestParam Long personId,
+            @RequestParam(required=false, defaultValue = "0") int bonusDays) {
+        Person person = personRepository.findById(personId).orElseThrow();
+        rentalService.checkIfAllAvailable(films, person, bonusDays);
+        rentalService.saveRental(films, person, bonusDays);
         return rentalRepository.findAll();
     }
 
-    // TODO: 3. Tagastamine
-    // ID + days
-    // panema filmi küljes Rentali null, days null ja arvutama
+    @PostMapping("end-rental")
+    public List<Rental> endRental(@RequestBody List<FilmRentalDTO> returns) {
+        rentalService.calculateLateFee(returns);
+        return rentalRepository.findAll();
+    }
+
+    @DeleteMapping("rentals")
+    public List<Rental> deleteRental(@RequestParam Long rentalId) {
+        rentalRepository.deleteById(rentalId);
+        return rentalRepository.findAll();
+    }
+
 }

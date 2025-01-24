@@ -1,27 +1,27 @@
 package com.kristjan.movie.store.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
-@Entity
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Rental {
+@Entity
+public class Person {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue (strategy = GenerationType.IDENTITY)
     private Long id;
-    private double initialFee;
-    private double lateFee;
+    private String name;
     @ColumnDefault("0")
-    private int bonusDaysUsed;
-    @ManyToOne
-    private Person person;
+    private int bonusPoints;
 
 }

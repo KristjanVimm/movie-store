@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class RentalService {
@@ -21,10 +22,22 @@ public class RentalService {
     @Autowired
     FilmRepository filmRepository;
     @Autowired
-    private PersonRepository personRepository;
+    PersonRepository personRepository;
 
     private final int PREMIUM_PRICE = 4;
     private final int BASIC_PRICE = 3;
+
+    public void checkIfAllAvailable(List<FilmRentalDTO> films, Person person, int bonusDays) {
+        for (FilmRentalDTO f : films) {
+            Film dbFilm = filmRepository.findById(f.getId()).orElseThrow();
+            if (dbFilm.getRental() != null) {
+                throw new RuntimeException("ERROR_FILM_RENTED, ID: " + dbFilm.getId());
+            }
+            if (dbFilm.getType() == FilmType.NEW && bonusDays > 0 && person.getBonusPoints() < bonusDays * 25) {
+                throw new RuntimeException("ERROR_NOT_ENOUGH_BONUS_POINTS");
+            }
+        }
+    }
 
     public void saveRental(List<FilmRentalDTO> films, Person person, int bonusDays) {
         Rental rental = new Rental();
@@ -55,46 +68,44 @@ public class RentalService {
                 }
                 person.setBonusPoints(person.getBonusPoints() + 2);
                 personRepository.save(person);
-
                 rental.setBonusDaysUsed(rental.getBonusDaysUsed() + bonusDaysToUse);
                 rentalRepository.save(rental);
-
                 return (dbFilm.getDaysRented() - bonusDaysToUse) * PREMIUM_PRICE;
-            } case REGULAR -> {
+            }
+            case REGULAR -> {
                 person.setBonusPoints(person.getBonusPoints() + 1);
                 personRepository.save(person);
                 return (dbFilm.getDaysRented() <= 3 ? 1 : dbFilm.getDaysRented() - 2 ) * BASIC_PRICE;
-            } case OLD -> {
+            }
+            case OLD -> {
                 person.setBonusPoints(person.getBonusPoints() + 1);
                 personRepository.save(person);
                 return (dbFilm.getDaysRented() <= 5 ? 1 : dbFilm.getDaysRented() - 4 ) * BASIC_PRICE;
-            } case null, default -> {
+            }
+            case null, default -> {
                 return 0;
             }
         }
     }
 
-    public void checkIfAllAvailable(List<FilmRentalDTO> films, Person person, int bonusDays) {
-        for (FilmRentalDTO f : films) {
+    public void checkIfAllRented(List<FilmRentalDTO> returns, Long personId) {
+        for (FilmRentalDTO f : returns) {
             Film dbFilm = filmRepository.findById(f.getId()).orElseThrow();
-            if (dbFilm.getRental() != null || dbFilm.getDaysRented() > 0) {
-                throw new RuntimeException("ERROR_FILM_RENTED, ID: " + dbFilm.getId());
+            if (dbFilm.getRental() == null || dbFilm.getDaysRented() <= 0) {
+                throw new RuntimeException("ERROR_FILM_NOT_BEING_RENTED ID: " + dbFilm.getId());
             }
-            if (dbFilm.getType() == FilmType.NEW && bonusDays > 0 && person.getBonusPoints() < bonusDays * 25) {
-                throw new RuntimeException("ERROR_NOT_ENOUGH_BONUS_POINTS");
+            Rental rental = dbFilm.getRental();
+            if (!Objects.equals(rental.getPerson().getId(), personId)) {
+                throw new RuntimeException("ERROR_WRONG_PERSON, FILM_ID: " + dbFilm.getId());
             }
         }
     }
 
     public void calculateLateFee(List<FilmRentalDTO> returns) {
-        double lateFee = 0;
         for (FilmRentalDTO rentalDTO : returns) {
             Film dbFilm = filmRepository.findById(rentalDTO.getId()).orElseThrow();
             if (dbFilm.getDaysRented() < rentalDTO.getDays()) {
                 Rental filmRental = dbFilm.getRental();
-                if (filmRental == null) {
-                    throw new RuntimeException("ERROR_FILM_NOT_RENTED: " + dbFilm.getId());
-                }
                 filmRental.setLateFee(filmRental.getLateFee() + getFilmLateFee(dbFilm, rentalDTO.getDays()));
                 rentalRepository.save(filmRental);
             }
@@ -104,7 +115,7 @@ public class RentalService {
         }
     }
 
-    private double getFilmLateFee(Film dbFilm, int days) {
+    public double getFilmLateFee(Film dbFilm, int days) {
         switch (dbFilm.getType()) {
             case NEW -> {
                 return (days - dbFilm.getDaysRented()) * PREMIUM_PRICE;
@@ -116,5 +127,15 @@ public class RentalService {
                 return 0;
             }
         }
+    }
+
+    public void clearCart(List<FilmRentalDTO> films, Person person) {
+        for (FilmRentalDTO f : films) {
+            Film dbFilm = filmRepository.findById(f.getId()).orElseThrow();
+            dbFilm.setCart(null);
+            filmRepository.save(dbFilm);
+        }
+        person.setCart(null);
+        personRepository.save(person);
     }
 }

@@ -1,19 +1,25 @@
 package com.kristjan.movie.store.controller;
 
+import com.kristjan.movie.store.entity.Cart;
 import com.kristjan.movie.store.entity.Film;
 import com.kristjan.movie.store.entity.FilmType;
 import com.kristjan.movie.store.model.FilmAddDTO;
 import com.kristjan.movie.store.repository.FilmRepository;
+import com.kristjan.movie.store.repository.PersonRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
+@CrossOrigin("http://localhost:5173")
 @RestController
 public class FilmController {
 
     @Autowired
     FilmRepository filmRepository;
+    @Autowired
+    PersonRepository personRepository;
 
     @PostMapping("films")
     public List<Film> addFilm(@RequestBody FilmAddDTO filmAdd) {
@@ -39,12 +45,26 @@ public class FilmController {
 
     @GetMapping("all-films")
     public List<Film> getFilms() {
-        return filmRepository.findAll();
+        return filmRepository.findByOrderByIdAsc();
     }
 
     @GetMapping("available-films")
     public List<Film> getAvailableFilms() {
-        return filmRepository.findByRentalNull();
+        return filmRepository.findByRentalNullOrderByIdAsc();
+    }
+
+    @GetMapping("cart-films")
+    public List<Film> getCartFilms(@RequestParam Long personId) {
+        Cart cart = personRepository.findById(personId).orElseThrow().getCart();
+        if (cart == null) {
+            return new ArrayList<>();
+        }
+        return filmRepository.findByCart_IdOrderByIdAsc(cart.getId());
+    }
+
+    @GetMapping("rented-films")
+    public List<Film> getRentedFilms(@RequestParam Long personId) {
+        return filmRepository.findByRental_Person_Id(personId);
     }
 
 }

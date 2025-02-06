@@ -21,6 +21,7 @@ public class Film {
     private int daysRented;
     @ManyToOne
     private Rental rental;
+    @ManyToOne
+    private Cart cart;
 
 }
-

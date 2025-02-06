@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@CrossOrigin("http://localhost:5173")
 @RestController
 public class RentalController {
 
@@ -33,12 +34,14 @@ public class RentalController {
             @RequestParam(required=false, defaultValue = "0") int bonusDays) {
         Person person = personRepository.findById(personId).orElseThrow();
         rentalService.checkIfAllAvailable(films, person, bonusDays);
+        rentalService.clearCart(films, person);
         rentalService.saveRental(films, person, bonusDays);
         return rentalRepository.findAll();
     }
 
     @PostMapping("end-rental")
-    public List<Rental> endRental(@RequestBody List<FilmRentalDTO> returns) {
+    public List<Rental> endRental(@RequestBody List<FilmRentalDTO> returns, @RequestParam Long personId) {
+        rentalService.checkIfAllRented(returns, personId);
         rentalService.calculateLateFee(returns);
         return rentalRepository.findAll();
     }

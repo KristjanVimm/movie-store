@@ -7,11 +7,17 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@CrossOrigin("http://localhost:5173")
 @RestController
 public class PersonController {
 
     @Autowired
     PersonRepository personRepository;
+
+    @GetMapping("persons")
+    public List<Person> getPersons() {
+        return personRepository.findAll();
+    }
 
     @PostMapping("persons")
     public List<Person> addPerson(@RequestBody Person person) {
@@ -20,14 +26,15 @@ public class PersonController {
         return personRepository.findAll();
     }
 
+    @GetMapping("password")
+    public boolean checkPassword(@RequestParam Long personId, String password) {
+        Person person = personRepository.findById(personId).orElseThrow();
+        return person.getPassword().equals(password);
+    }
+
     @DeleteMapping("persons")
     public List<Person> deletePerson(@RequestParam Long personId) {
         personRepository.deleteById(personId);
-        return personRepository.findAll();
-    }
-
-    @GetMapping("persons")
-    public List<Person> getPersons() {
         return personRepository.findAll();
     }
 
@@ -36,10 +43,4 @@ public class PersonController {
         return personRepository.findById(personId).orElseThrow().getBonusPoints();
     }
 
-    @PatchMapping("bonus-points")
-    public void setBonusPoints(@RequestParam Long personId, int newPoints) {
-        Person person = personRepository.findById(personId).orElseThrow();
-        person.setBonusPoints(newPoints);
-        personRepository.save(person);
-    }
 }
